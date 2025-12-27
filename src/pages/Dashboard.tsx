@@ -48,7 +48,7 @@ export const Dashboard = () => {
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <h2 className="text-2xl font-bold mb-4">레벨 선택</h2>
           <div className="flex gap-4 mb-6">
-            {(['N4', 'N3', 'N2'] as JLPTLevel[]).map((l) => (
+            {(['N4', 'N3', 'N2', 'ALL'] as JLPTLevel[]).map((l) => (
               <button
                 key={l}
                 onClick={() => handleLevelChange(l)}
@@ -58,7 +58,7 @@ export const Dashboard = () => {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                {l}
+                {l === 'ALL' ? '랜덤 (전체)' : l}
               </button>
             ))}
           </div>

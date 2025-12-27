@@ -3,6 +3,16 @@ import { getStudiedWords, getUnmasteredWrongWords, getSessionCount } from './sto
 import kanjiN4 from '../data/kanji_n4.json';
 import kanjiN3 from '../data/kanji_n3.json';
 import kanjiN2 from '../data/kanji_n2.json';
+import kanjiCommon1 from '../data/kanji_common_1.json';
+import kanjiCommon2 from '../data/kanji_common_2.json';
+import kanjiCommon3 from '../data/kanji_common_3.json';
+import kanjiCommon4 from '../data/kanji_common_4.json';
+import kanjiCommon5 from '../data/kanji_common_5.json';
+import kanjiCommon6 from '../data/kanji_common_6.json';
+import kanjiCommon7 from '../data/kanji_common_7.json';
+import kanjiCommon8 from '../data/kanji_common_8.json';
+import kanjiCommon9 from '../data/kanji_common_9.json';
+import kanjiCommon10 from '../data/kanji_common_10.json';
 
 // Load all words for a given level
 export const loadKanjiWords = (level: JLPTLevel): KanjiWord[] => {
@@ -13,6 +23,22 @@ export const loadKanjiWords = (level: JLPTLevel): KanjiWord[] => {
       return kanjiN3 as KanjiWord[];
     case 'N2':
       return kanjiN2 as KanjiWord[];
+    case 'ALL':
+      return [
+        ...(kanjiN4 as KanjiWord[]),
+        ...(kanjiN3 as KanjiWord[]),
+        ...(kanjiN2 as KanjiWord[]),
+        ...(kanjiCommon1 as KanjiWord[]),
+        ...(kanjiCommon2 as KanjiWord[]),
+        ...(kanjiCommon3 as KanjiWord[]),
+        ...(kanjiCommon4 as KanjiWord[]),
+        ...(kanjiCommon5 as KanjiWord[]),
+        ...(kanjiCommon6 as KanjiWord[]),
+        ...(kanjiCommon7 as KanjiWord[]),
+        ...(kanjiCommon8 as KanjiWord[]),
+        ...(kanjiCommon9 as KanjiWord[]),
+        ...(kanjiCommon10 as KanjiWord[])
+      ];
     default:
       return kanjiN4 as KanjiWord[];
   }

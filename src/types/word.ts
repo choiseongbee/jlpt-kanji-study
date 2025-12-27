@@ -1,4 +1,4 @@
-export type JLPTLevel = 'N4' | 'N3' | 'N2';
+export type JLPTLevel = 'N4' | 'N3' | 'N2' | 'ALL';
 
 export interface KanjiWord {
   id: number;
