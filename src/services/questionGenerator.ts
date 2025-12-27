@@ -58,7 +58,6 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 export const generateDailyQuestions = (level: JLPTLevel): KanjiWord[] => {
   // 1. Load data from localStorage
   const studiedWordIds = getStudiedWords();
-  const wrongWords = getUnmasteredWrongWords();
   const sessionCount = getSessionCount();
 
   // 2. Load all words for current level
@@ -74,16 +73,14 @@ export const generateDailyQuestions = (level: JLPTLevel): KanjiWord[] => {
     const shuffled = shuffleArray(newWords);
     return shuffled.slice(0, 15);
   } else {
-    // Subsequent sessions: 10 wrong words + 15 new words
+    // Subsequent sessions: 10 random studied words + 15 new words
 
-    // Get wrong words (up to 10)
-    const wrongWordIds = wrongWords
-      .sort(() => Math.random() - 0.5) // Shuffle wrong words
-      .slice(0, 10)
-      .map(w => w.wordId);
+    // Get 10 random words from already studied words
+    const studiedWords = allWords
+      .filter(word => studiedWordIds.includes(word.id));
 
-    const wrongWordsList = allWords
-      .filter(word => wrongWordIds.includes(word.id));
+    const shuffledStudied = shuffleArray(studiedWords);
+    const reviewWords = shuffledStudied.slice(0, 10);
 
     // Get new words (15)
     const newWords = allWords
@@ -94,7 +91,7 @@ export const generateDailyQuestions = (level: JLPTLevel): KanjiWord[] => {
     const selectedNewWords = shuffledNewWords.slice(0, 15);
 
     // Combine and shuffle
-    const allQuestions = [...wrongWordsList, ...selectedNewWords];
+    const allQuestions = [...reviewWords, ...selectedNewWords];
     return shuffleArray(allQuestions);
   }
 };
