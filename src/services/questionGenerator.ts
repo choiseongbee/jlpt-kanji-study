@@ -1,0 +1,134 @@
+import type { KanjiWord, JLPTLevel } from '../types';
+import { getStudiedWords, getUnmasteredWrongWords, getSessionCount } from './storageService';
+import kanjiN4 from '../data/kanji_n4.json';
+import kanjiN3 from '../data/kanji_n3.json';
+import kanjiN2 from '../data/kanji_n2.json';
+
+// Load all words for a given level
+export const loadKanjiWords = (level: JLPTLevel): KanjiWord[] => {
+  switch (level) {
+    case 'N4':
+      return kanjiN4 as KanjiWord[];
+    case 'N3':
+      return kanjiN3 as KanjiWord[];
+    case 'N2':
+      return kanjiN2 as KanjiWord[];
+    default:
+      return kanjiN4 as KanjiWord[];
+  }
+};
+
+// Shuffle array using Fisher-Yates algorithm
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// Generate daily questions based on study progress
+export const generateDailyQuestions = (level: JLPTLevel): KanjiWord[] => {
+  // 1. Load data from localStorage
+  const studiedWordIds = getStudiedWords();
+  const wrongWords = getUnmasteredWrongWords();
+  const sessionCount = getSessionCount();
+
+  // 2. Load all words for current level
+  const allWords = loadKanjiWords(level);
+
+  // 3. First session vs subsequent sessions
+  if (sessionCount === 0) {
+    // First session: 15 new words only
+    const newWords = allWords
+      .filter(word => !studiedWordIds.includes(word.id))
+      .slice(0, 50); // Get first 50 candidates
+
+    const shuffled = shuffleArray(newWords);
+    return shuffled.slice(0, 15);
+  } else {
+    // Subsequent sessions: 10 wrong words + 15 new words
+
+    // Get wrong words (up to 10)
+    const wrongWordIds = wrongWords
+      .sort(() => Math.random() - 0.5) // Shuffle wrong words
+      .slice(0, 10)
+      .map(w => w.wordId);
+
+    const wrongWordsList = allWords
+      .filter(word => wrongWordIds.includes(word.id));
+
+    // Get new words (15)
+    const newWords = allWords
+      .filter(word => !studiedWordIds.includes(word.id))
+      .slice(0, 50); // Get first 50 candidates
+
+    const shuffledNewWords = shuffleArray(newWords);
+    const selectedNewWords = shuffledNewWords.slice(0, 15);
+
+    // Combine and shuffle
+    const allQuestions = [...wrongWordsList, ...selectedNewWords];
+    return shuffleArray(allQuestions);
+  }
+};
+
+// Get new words that haven't been studied yet
+export const getNewWords = (level: JLPTLevel, count: number): KanjiWord[] => {
+  const studiedWordIds = getStudiedWords();
+  const allWords = loadKanjiWords(level);
+
+  const newWords = allWords
+    .filter(word => !studiedWordIds.includes(word.id))
+    .slice(0, count * 2); // Get more candidates
+
+  const shuffled = shuffleArray(newWords);
+  return shuffled.slice(0, count);
+};
+
+// Get wrong words for review
+export const getWrongWordsForReview = (level: JLPTLevel, count: number): KanjiWord[] => {
+  const wrongWords = getUnmasteredWrongWords();
+  const allWords = loadKanjiWords(level);
+
+  const wrongWordIds = wrongWords
+    .sort((a, b) => b.wrongCount - a.wrongCount) // Sort by wrong count (most wrong first)
+    .slice(0, count)
+    .map(w => w.wordId);
+
+  return allWords.filter(word => wrongWordIds.includes(word.id));
+};
+
+// Check if there are enough new words for a session
+export const hasEnoughNewWords = (level: JLPTLevel, required: number): boolean => {
+  const studiedWordIds = getStudiedWords();
+  const allWords = loadKanjiWords(level);
+  const availableNewWords = allWords.filter(word => !studiedWordIds.includes(word.id));
+  return availableNewWords.length >= required;
+};
+
+// Get total word count for a level
+export const getTotalWordCount = (level: JLPTLevel): number => {
+  return loadKanjiWords(level).length;
+};
+
+// Get studied word count for a level
+export const getStudiedWordCount = (level: JLPTLevel): number => {
+  const studiedWordIds = getStudiedWords();
+  const allWords = loadKanjiWords(level);
+  return allWords.filter(word => studiedWordIds.includes(word.id)).length;
+};
+
+// Get remaining word count for a level
+export const getRemainingWordCount = (level: JLPTLevel): number => {
+  const total = getTotalWordCount(level);
+  const studied = getStudiedWordCount(level);
+  return total - studied;
+};
+
+// Calculate level completion percentage
+export const getLevelCompletion = (level: JLPTLevel): number => {
+  const total = getTotalWordCount(level);
+  const studied = getStudiedWordCount(level);
+  return total > 0 ? Math.round((studied / total) * 100) : 0;
+};
