@@ -23,7 +23,8 @@ export const Study = () => {
   const [hiraganaInput, setHiraganaInput] = useState('');
   const [meaningInput, setMeaningInput] = useState('');
   const [showResults, setShowResults] = useState(false);
-  const [results, setResults] = useState<AnswerResult[]>([]);
+  const [allRoundResults, setAllRoundResults] = useState<AnswerResult[]>([]);
+  const [currentRound, setCurrentRound] = useState(1);
 
   useEffect(() => {
     const qs = generateDailyQuestions(level);
@@ -50,18 +51,55 @@ export const Study = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      finishSession(newAnswers);
+      // 현재 라운드 종료 - 채점하기
+      checkRoundAndContinue(newAnswers);
     }
   };
 
-  const finishSession = (answers: UserAnswer[]) => {
+  const checkRoundAndContinue = (answers: UserAnswer[]) => {
+    // 현재 라운드 채점
     const graded = gradeAnswers(questions, answers);
-    setResults(graded);
 
-    const correctIds = getCorrectWordIds(graded);
-    const wrongIds = getWrongWordIds(graded);
+    // 전체 결과에 추가
+    const updatedAllResults = [...allRoundResults, ...graded];
+    setAllRoundResults(updatedAllResults);
 
-    addStudiedWords(questions.map(q => q.id));
+    // 틀린 문제 찾기
+    const wrongOnes = graded.filter(r => !r.isCorrect);
+
+    if (wrongOnes.length > 0) {
+      // 틀린 문제가 있으면 다시 출제
+      const wrongWords = wrongOnes.map(r => r.word);
+      setQuestions(wrongWords);
+      setCurrentIndex(0);
+      setUserAnswers([]);
+      setCurrentRound(currentRound + 1);
+    } else {
+      // 모두 맞췄으면 세션 종료
+      finishSession(updatedAllResults);
+    }
+  };
+
+  const finishSession = (allResults: AnswerResult[]) => {
+    // 최종 결과 저장 (중복 제거 - 가장 마지막 시도 결과만)
+    const finalResults: AnswerResult[] = [];
+    const seenIds = new Set<number>();
+
+    // 역순으로 순회해서 가장 마지막 시도만 남김
+    for (let i = allResults.length - 1; i >= 0; i--) {
+      const result = allResults[i];
+      if (!seenIds.has(result.wordId)) {
+        finalResults.unshift(result);
+        seenIds.add(result.wordId);
+      }
+    }
+
+    const correctIds = getCorrectWordIds(finalResults);
+    const wrongIds = getWrongWordIds(finalResults);
+
+    // 첫 라운드 문제들만 저장 (처음 출제된 문제들)
+    const firstRoundQuestionIds = Array.from(new Set(allResults.map(r => r.wordId)));
+    addStudiedWords(firstRoundQuestionIds);
 
     correctIds.forEach(id => {
       markWordAsMastered(id);
@@ -74,15 +112,17 @@ export const Study = () => {
     const session = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
-      totalQuestions: questions.length,
+      totalQuestions: firstRoundQuestionIds.length,
       correctAnswers: correctIds.length,
       completedAt: new Date().toISOString(),
-      results: graded,
+      results: finalResults,
     };
 
     addSession(session);
-    incrementWordsStudied(questions.length);
+    incrementWordsStudied(firstRoundQuestionIds.length);
 
+    // 결과 화면에 표시할 데이터 설정
+    setAllRoundResults(finalResults);
     setShowResults(true);
   };
 
@@ -103,8 +143,8 @@ export const Study = () => {
   }
 
   if (showResults) {
-    const correctCount = results.filter(r => r.isCorrect).length;
-    const accuracy = Math.round((correctCount / results.length) * 100);
+    const correctCount = allRoundResults.filter(r => r.isCorrect).length;
+    const accuracy = Math.round((correctCount / allRoundResults.length) * 100);
 
     return (
       <div className="min-h-screen bg-gray-100">
@@ -115,7 +155,7 @@ export const Study = () => {
             <div className="grid grid-cols-3 gap-4 mb-8">
               <div className="text-center p-4 bg-blue-50 rounded">
                 <p className="text-gray-600">총 문제</p>
-                <p className="text-3xl font-bold">{results.length}</p>
+                <p className="text-3xl font-bold">{allRoundResults.length}</p>
               </div>
               <div className="text-center p-4 bg-green-50 rounded">
                 <p className="text-gray-600">정답</p>
@@ -123,7 +163,7 @@ export const Study = () => {
               </div>
               <div className="text-center p-4 bg-red-50 rounded">
                 <p className="text-gray-600">오답</p>
-                <p className="text-3xl font-bold text-red-600">{results.length - correctCount}</p>
+                <p className="text-3xl font-bold text-red-600">{allRoundResults.length - correctCount}</p>
               </div>
             </div>
 
@@ -133,8 +173,8 @@ export const Study = () => {
             </div>
 
             <div className="mb-8">
-              <h3 className="text-2xl font-bold mb-4">틀린 문제</h3>
-              {results.filter(r => !r.isCorrect).map((result) => (
+              <h3 className="text-2xl font-bold mb-4">최종 틀린 문제</h3>
+              {allRoundResults.filter(r => !r.isCorrect).map((result) => (
                 <div key={result.wordId} className="border-b py-4">
                   <div className="text-4xl font-bold mb-2">{result.word.kanji}</div>
                   <div className="grid grid-cols-2 gap-4">
@@ -157,7 +197,7 @@ export const Study = () => {
                   </div>
                 </div>
               ))}
-              {results.filter(r => !r.isCorrect).length === 0 && (
+              {allRoundResults.filter(r => !r.isCorrect).length === 0 && (
                 <p className="text-center text-gray-500 py-4">모든 문제를 맞췄습니다!</p>
               )}
             </div>
@@ -180,7 +220,9 @@ export const Study = () => {
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-gray-600">진행 상황</span>
+              <span className="text-gray-600">
+                {currentRound === 1 ? '진행 상황' : `${currentRound}차 복습 중`}
+              </span>
               <span className="text-xl font-bold text-blue-600">{progress}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-4">
