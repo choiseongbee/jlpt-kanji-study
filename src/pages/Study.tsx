@@ -56,6 +56,29 @@ export const Study = () => {
     }
   };
 
+  const handlePass = () => {
+    if (!currentQuestion) return;
+
+    // 빈 답변을 제출하여 틀린 것으로 처리
+    const answer: UserAnswer = {
+      wordId: currentQuestion.id,
+      hiragana: '',
+      meaning: '',
+    };
+
+    const newAnswers = [...userAnswers, answer];
+    setUserAnswers(newAnswers);
+    setHiraganaInput('');
+    setMeaningInput('');
+
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      // 현재 라운드 종료 - 채점하기
+      checkRoundAndContinue(newAnswers);
+    }
+  };
+
   const checkRoundAndContinue = (answers: UserAnswer[]) => {
     // 현재 라운드 채점
     const graded = gradeAnswers(questions, answers);
@@ -268,13 +291,21 @@ export const Study = () => {
               />
             </div>
 
-            <button
-              onClick={handleNext}
-              disabled={!hiraganaInput || !meaningInput}
-              className="w-full bg-blue-600 text-white py-4 rounded-lg text-xl font-bold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed mt-6"
-            >
-              {currentIndex < questions.length - 1 ? '다음' : '완료'}
-            </button>
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={handlePass}
+                className="flex-1 bg-gray-500 text-white py-4 rounded-lg text-xl font-bold hover:bg-gray-600"
+              >
+                패스
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={!hiraganaInput || !meaningInput}
+                className="flex-1 bg-blue-600 text-white py-4 rounded-lg text-xl font-bold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {currentIndex < questions.length - 1 ? '다음' : '완료'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
