@@ -67,8 +67,7 @@ export const generateDailyQuestions = (level: JLPTLevel): KanjiWord[] => {
   if (sessionCount === 0) {
     // First session: 15 new words only
     const newWords = allWords
-      .filter(word => !studiedWordIds.includes(word.id))
-      .slice(0, 50); // Get first 50 candidates
+      .filter(word => !studiedWordIds.includes(word.id));
 
     const shuffled = shuffleArray(newWords);
     return shuffled.slice(0, 15);
@@ -84,8 +83,7 @@ export const generateDailyQuestions = (level: JLPTLevel): KanjiWord[] => {
 
     // Get new words (15)
     const newWords = allWords
-      .filter(word => !studiedWordIds.includes(word.id))
-      .slice(0, 50); // Get first 50 candidates
+      .filter(word => !studiedWordIds.includes(word.id));
 
     const shuffledNewWords = shuffleArray(newWords);
     const selectedNewWords = shuffledNewWords.slice(0, 15);
