@@ -27,7 +27,6 @@ export const Study = () => {
   const [currentRoundResults, setCurrentRoundResults] = useState<AnswerResult[]>([]);
   const [allRoundResults, setAllRoundResults] = useState<AnswerResult[]>([]);
   const [currentRound, setCurrentRound] = useState(1);
-  const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
 
   useEffect(() => {
     const qs = generateDailyQuestions(level);
@@ -174,31 +173,16 @@ export const Study = () => {
     }
   };
 
-  const handleLongPressStart = (character: string) => {
-    const timer = window.setTimeout(() => {
-      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(character)}`;
-      window.open(searchUrl, '_blank');
-    }, 500); // 500ms 길게 누르기
-    setLongPressTimer(timer);
+  const handleKanjiClick = (character: string) => {
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(character)}`;
+    window.open(searchUrl, '_blank');
   };
 
-  const handleLongPressEnd = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  };
-
-  const renderKanjiWithLongPress = (kanji: string) => {
+  const renderKanjiWithClick = (kanji: string) => {
     return kanji.split('').map((char, index) => (
       <span
         key={index}
-        onTouchStart={() => handleLongPressStart(char)}
-        onTouchEnd={handleLongPressEnd}
-        onTouchCancel={handleLongPressEnd}
-        onMouseDown={() => handleLongPressStart(char)}
-        onMouseUp={handleLongPressEnd}
-        onMouseLeave={handleLongPressEnd}
+        onClick={() => handleKanjiClick(char)}
         className="cursor-pointer hover:text-blue-600 transition-colors"
         style={{ userSelect: 'none' }}
       >
@@ -256,7 +240,7 @@ export const Study = () => {
                 {currentRoundResults.filter(r => !r.isCorrect).map((result) => (
                   <div key={result.wordId} className="border-b py-4">
                     <div className="text-4xl font-bold mb-2">
-                      {renderKanjiWithLongPress(result.word.kanji)}
+                      {renderKanjiWithClick(result.word.kanji)}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -287,7 +271,7 @@ export const Study = () => {
                 {currentRoundResults.filter(r => r.isCorrect).map((result) => (
                   <div key={result.wordId} className="border-b py-4">
                     <div className="text-4xl font-bold mb-2">
-                      {renderKanjiWithLongPress(result.word.kanji)}
+                      {renderKanjiWithClick(result.word.kanji)}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -369,7 +353,7 @@ export const Study = () => {
                 {allRoundResults.filter(r => !r.isCorrect).map((result) => (
                   <div key={result.wordId} className="border-b py-4">
                     <div className="text-4xl font-bold mb-2">
-                      {renderKanjiWithLongPress(result.word.kanji)}
+                      {renderKanjiWithClick(result.word.kanji)}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -400,7 +384,7 @@ export const Study = () => {
                 {allRoundResults.filter(r => r.isCorrect).map((result) => (
                   <div key={result.wordId} className="border-b py-4">
                     <div className="text-4xl font-bold mb-2">
-                      {renderKanjiWithLongPress(result.word.kanji)}
+                      {renderKanjiWithClick(result.word.kanji)}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
