@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { KanjiWord, UserAnswer, AnswerResult, JLPTLevel } from '../types';
-import { generateDailyQuestions } from '../services/questionGenerator';
+import { generateDailyQuestions, shuffleArray } from '../services/questionGenerator';
 import { gradeAnswers, getWrongWordIds, getCorrectWordIds } from '../services/grader';
 import {
   addSession,
@@ -27,6 +27,7 @@ export const Study = () => {
   const [currentRoundResults, setCurrentRoundResults] = useState<AnswerResult[]>([]);
   const [allRoundResults, setAllRoundResults] = useState<AnswerResult[]>([]);
   const [currentRound, setCurrentRound] = useState(1);
+  const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
 
   useEffect(() => {
     const qs = generateDailyQuestions(level);
@@ -101,9 +102,10 @@ export const Study = () => {
     const wrongOnes = currentRoundResults.filter(r => !r.isCorrect);
 
     if (wrongOnes.length > 0) {
-      // 틀린 문제로 새 라운드 시작
+      // 틀린 문제로 새 라운드 시작 (순서 섞기)
       const wrongWords = wrongOnes.map(r => r.word);
-      setQuestions(wrongWords);
+      const shuffledWrongWords = shuffleArray(wrongWords);
+      setQuestions(shuffledWrongWords);
       setCurrentIndex(0);
       setUserAnswers([]);
       setCurrentRound(currentRound + 1);
@@ -172,6 +174,39 @@ export const Study = () => {
     }
   };
 
+  const handleLongPressStart = (character: string) => {
+    const timer = window.setTimeout(() => {
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(character)}`;
+      window.open(searchUrl, '_blank');
+    }, 500); // 500ms 길게 누르기
+    setLongPressTimer(timer);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const renderKanjiWithLongPress = (kanji: string) => {
+    return kanji.split('').map((char, index) => (
+      <span
+        key={index}
+        onTouchStart={() => handleLongPressStart(char)}
+        onTouchEnd={handleLongPressEnd}
+        onTouchCancel={handleLongPressEnd}
+        onMouseDown={() => handleLongPressStart(char)}
+        onMouseUp={handleLongPressEnd}
+        onMouseLeave={handleLongPressEnd}
+        className="cursor-pointer hover:text-blue-600 transition-colors"
+        style={{ userSelect: 'none' }}
+      >
+        {char}
+      </span>
+    ));
+  };
+
   if (questions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -217,10 +252,12 @@ export const Study = () => {
 
             {wrongCount > 0 && (
               <div className="mb-8">
-                <h3 className="text-2xl font-bold mb-4">틀린 문제</h3>
+                <h3 className="text-2xl font-bold mb-4 text-red-600">틀린 문제</h3>
                 {currentRoundResults.filter(r => !r.isCorrect).map((result) => (
                   <div key={result.wordId} className="border-b py-4">
-                    <div className="text-4xl font-bold mb-2">{result.word.kanji}</div>
+                    <div className="text-4xl font-bold mb-2">
+                      {renderKanjiWithLongPress(result.word.kanji)}
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">정답 (히라가나)</p>
@@ -237,6 +274,29 @@ export const Study = () => {
                         <p className={result.meaningCorrect ? 'text-green-600' : 'text-red-600'}>
                           {result.userAnswer.meaning || '(미입력)'}
                         </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {correctCount > 0 && (
+              <div className="mb-8">
+                <h3 className="text-2xl font-bold mb-4 text-green-600">맞은 문제</h3>
+                {currentRoundResults.filter(r => r.isCorrect).map((result) => (
+                  <div key={result.wordId} className="border-b py-4">
+                    <div className="text-4xl font-bold mb-2">
+                      {renderKanjiWithLongPress(result.word.kanji)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">히라가나</p>
+                        <p className="font-bold text-green-600">{result.word.hiragana}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">뜻</p>
+                        <p className="font-bold text-green-600">{result.word.meaning}</p>
                       </div>
                     </div>
                   </div>
@@ -303,35 +363,65 @@ export const Study = () => {
               <p className="text-5xl font-bold text-blue-600">{accuracy}%</p>
             </div>
 
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold mb-4">최종 틀린 문제</h3>
-              {allRoundResults.filter(r => !r.isCorrect).map((result) => (
-                <div key={result.wordId} className="border-b py-4">
-                  <div className="text-4xl font-bold mb-2">{result.word.kanji}</div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">정답 (히라가나)</p>
-                      <p className="font-bold text-green-600">{result.word.hiragana}</p>
-                      <p className="text-sm text-gray-600 mt-2">내 답변</p>
-                      <p className={result.hiraganaCorrect ? 'text-green-600' : 'text-red-600'}>
-                        {result.userAnswer.hiragana || '(미입력)'}
-                      </p>
+            {allRoundResults.filter(r => !r.isCorrect).length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-2xl font-bold mb-4 text-red-600">최종 틀린 문제</h3>
+                {allRoundResults.filter(r => !r.isCorrect).map((result) => (
+                  <div key={result.wordId} className="border-b py-4">
+                    <div className="text-4xl font-bold mb-2">
+                      {renderKanjiWithLongPress(result.word.kanji)}
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">정답 (뜻)</p>
-                      <p className="font-bold text-green-600">{result.word.meaning}</p>
-                      <p className="text-sm text-gray-600 mt-2">내 답변</p>
-                      <p className={result.meaningCorrect ? 'text-green-600' : 'text-red-600'}>
-                        {result.userAnswer.meaning || '(미입력)'}
-                      </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">정답 (히라가나)</p>
+                        <p className="font-bold text-green-600">{result.word.hiragana}</p>
+                        <p className="text-sm text-gray-600 mt-2">내 답변</p>
+                        <p className={result.hiraganaCorrect ? 'text-green-600' : 'text-red-600'}>
+                          {result.userAnswer.hiragana || '(미입력)'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">정답 (뜻)</p>
+                        <p className="font-bold text-green-600">{result.word.meaning}</p>
+                        <p className="text-sm text-gray-600 mt-2">내 답변</p>
+                        <p className={result.meaningCorrect ? 'text-green-600' : 'text-red-600'}>
+                          {result.userAnswer.meaning || '(미입력)'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {allRoundResults.filter(r => !r.isCorrect).length === 0 && (
-                <p className="text-center text-gray-500 py-4">모든 문제를 맞췄습니다!</p>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
+
+            {correctCount > 0 && (
+              <div className="mb-8">
+                <h3 className="text-2xl font-bold mb-4 text-green-600">맞은 문제</h3>
+                {allRoundResults.filter(r => r.isCorrect).map((result) => (
+                  <div key={result.wordId} className="border-b py-4">
+                    <div className="text-4xl font-bold mb-2">
+                      {renderKanjiWithLongPress(result.word.kanji)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">히라가나</p>
+                        <p className="font-bold text-green-600">{result.word.hiragana}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">뜻</p>
+                        <p className="font-bold text-green-600">{result.word.meaning}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {allRoundResults.filter(r => !r.isCorrect).length === 0 && (
+              <div className="mb-8 text-center">
+                <p className="text-2xl text-green-600 font-bold py-4">모든 문제를 맞췄습니다!</p>
+              </div>
+            )}
 
             <button
               onClick={() => navigate('/')}
