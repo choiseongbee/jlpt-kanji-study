@@ -12,6 +12,20 @@ import {
   getCurrentLevel,
 } from '../services/storageService';
 
+const SESSION_STORAGE_KEY = 'jlpt_current_study_session';
+
+interface StudySessionState {
+  level: JLPTLevel;
+  questions: KanjiWord[];
+  currentIndex: number;
+  userAnswers: UserAnswer[];
+  currentRound: number;
+  allRoundResults: AnswerResult[];
+  showRoundResults: boolean;
+  currentRoundResults: AnswerResult[];
+  showResults: boolean;
+}
+
 export const Study = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,10 +42,59 @@ export const Study = () => {
   const [allRoundResults, setAllRoundResults] = useState<AnswerResult[]>([]);
   const [currentRound, setCurrentRound] = useState(1);
 
+  // 페이지 로드 시 sessionStorage에서 복원 시도
   useEffect(() => {
-    const qs = generateDailyQuestions(level);
-    setQuestions(qs);
-  }, [level]);
+    const savedSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (savedSession) {
+      try {
+        const state: StudySessionState = JSON.parse(savedSession);
+        setQuestions(state.questions);
+        setCurrentIndex(state.currentIndex);
+        setUserAnswers(state.userAnswers);
+        setCurrentRound(state.currentRound);
+        setAllRoundResults(state.allRoundResults);
+        setShowRoundResults(state.showRoundResults);
+        setCurrentRoundResults(state.currentRoundResults);
+        setShowResults(state.showResults);
+      } catch (e) {
+        // 복원 실패 시 새로 시작
+        const qs = generateDailyQuestions(level);
+        setQuestions(qs);
+      }
+    } else {
+      // 저장된 세션이 없으면 새로 시작
+      const qs = generateDailyQuestions(level);
+      setQuestions(qs);
+    }
+  }, []);
+
+  // 상태가 변경될 때마다 sessionStorage에 저장
+  useEffect(() => {
+    if (questions.length > 0) {
+      const state: StudySessionState = {
+        level,
+        questions,
+        currentIndex,
+        userAnswers,
+        currentRound,
+        allRoundResults,
+        showRoundResults,
+        currentRoundResults,
+        showResults,
+      };
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(state));
+    }
+  }, [
+    level,
+    questions,
+    currentIndex,
+    userAnswers,
+    currentRound,
+    allRoundResults,
+    showRoundResults,
+    currentRoundResults,
+    showResults,
+  ]);
 
   const currentQuestion = questions[currentIndex];
   const progress = `${currentIndex + 1} / ${questions.length}`;
@@ -165,6 +228,9 @@ export const Study = () => {
     setAllRoundResults(finalResults);
     setShowRoundResults(false);
     setShowResults(true);
+
+    // sessionStorage 정리
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -408,7 +474,10 @@ export const Study = () => {
             )}
 
             <button
-              onClick={() => navigate('/')}
+              onClick={() => {
+                sessionStorage.removeItem(SESSION_STORAGE_KEY);
+                navigate('/');
+              }}
               className="w-full bg-blue-600 text-white py-4 rounded-lg text-xl font-bold hover:bg-blue-700"
             >
               대시보드로 돌아가기
